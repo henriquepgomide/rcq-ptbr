@@ -1,5 +1,5 @@
 #----- Retrieving data frames -----
-setwd("drinkless/csvs/sites/default/files/gwiaa_export/")
+setwd("/home/hp/Dropbox/drinkless/csvs/sites/default/files/gwiaa_export/")
 
 # Retrieving csvs with client_id column
 files  <- list.files() #listing files 
@@ -21,20 +21,18 @@ for (j in 1:length(csvwId$files)) {
   
 }
 
-
 #---- RCQ Validation ------
 
 # Libraries
 library(psych)
-library(ggplot2)
 library(RColorBrewer)
-library(xtable)
 library(sp)
 library(car)
 library(MBESS)
 library(semPlot)
-library(ltm)
 library(lattice)
+library(ltm)
+library(mirt)
 
 
 #------ PREPARING DATA  -------
@@ -51,16 +49,17 @@ rcqFinal  <- merge(rcqMerged, rcq_motivation, by.x="client_id", by.y="client_ID"
 rm(rcqMerged) # removing the temporary dataframe
 
 ## Select just valid cases for RCQ
-rcqValid  <- subset(rcqFinal, rcqFinal$rcq_1 != "NA" & rcqFinal$rcq_2 != "NA" & rcqFinal$rcq_1 != "NA" & rcqFinal$Research == "Sim")
-rcqValid$sex <-  as.numeric(rcqValid$sex)
+rcq  <- subset(rcqFinal, rcqFinal$rcq_1 != "NA" & rcqFinal$rcq_2 != "NA" & rcqFinal$rcq_1 != "NA" & rcqFinal$Research == "Sim")
+rcq$sex <-  as.numeric(rcq$sex)
+rcq$Timestamp.x <- as.Date(rcq$Timestamp.x, "%d.%m.%Y")
 
 
 ## Final dataframe
-rcqValid  <- rcqValid[, c("client_id", "audit_1", "audit_2", "audit_3", "audit_4", "audit_5", "audit_6", "audit_7", "audit_8", "audit_9", "audit_10", "Result", "sex", "age", "education", "Province", "País", "Work.situation", "rcq_1", "rcq_2", "rcq_3","rcq_4","rcq_5","rcq_6","rcq_7","rcq_8","rcq_9","rcq_10","rcq_11","rcq_12","rcq_a","rcq_b","rcq_c","rcq_outcome")]
+rcq  <- rcq[, c("client_id", "Timestamp.x", "audit_1", "audit_2", "audit_3", "audit_4", "audit_5", "audit_6", "audit_7", "audit_8", "audit_9", "audit_10", "Result", "sex", "age", "education", "Province", "País", "Work.situation", "rcq_1", "rcq_2", "rcq_3","rcq_4","rcq_5","rcq_6","rcq_7","rcq_8","rcq_9","rcq_10","rcq_11","rcq_12","rcq_a","rcq_b","rcq_c","rcq_outcome")]
 
 
 ## Save final data.frame as csv file
-write.csv(rcqValid, "rcq.csv")
+write.csv(rcq, "rcq.csv")
 
 #------ DATA ANALYSIS -------
 
@@ -86,69 +85,65 @@ rcq$education <- factor(rcq$education, labels=c("High School Comp","High School 
 ### Work situation
 rcq$Work.situation  <- factor(rcq$Work.situation, labels=c("Não", "Sim"))
 
+### Province to Region
+# Southeast
+rcq$region[rcq$Province == "Esp?rito Santo" | rcq$Province == "Minas Gerais" | rcq$Province == "Rio de Janeiro" | rcq$Province == "S?o Paulo"]  <- "Southeast"
+# South
+rcq$region[rcq$Province == "Paran?" | rcq$Province == "Santa Catarina" | rcq$Province == "Rio Grande do Sul"]  <- "South"
+# Mid-west
+rcq$region[rcq$Province == "Mato Grosso" | rcq$Province == "Mato Grosso do Sul" | rcq$Province == "Goi?s" | rcq$Province == "Distrito Federal"]  <- "Midwest"
+# Northeast
+rcq$region[rcq$Province == "Bahia" | rcq$Province == "Sergipe" | rcq$Province == "Pernambuco" | rcq$Province == "Piau?" | rcq$Province == "Rio Grande do Norte" |  rcq$Province == "Para?ba" | rcq$Province == "Cear?" |  rcq$Province == "Alagoas" | rcq$Province == "Maranh?o"]  <- "Northeast"
+# North
+rcq$region[rcq$Province == "Acre" | rcq$Province == "Amazonas" | rcq$Province == "Rond?nia" | rcq$Province == "Roraima" | rcq$Province == "Amap?" | rcq$Province == "Tocantins" ]  <- "North"
+# NA
+rcq$region[rcq$Province == "0"]  <- NA
+
+### RCQ
+#computing using WHO criteria
+rcq$scorePc  <- rcq$rcq_1 + rcq$rcq_5 + rcq$rcq_10 + rcq$rcq_12
+rcq$scoreC <- rcq$rcq_3 + rcq$rcq_4 + rcq$rcq_8 + rcq$rcq_9
+rcq$scoreA  <- rcq$rcq_2 + rcq$rcq_6 + rcq$rcq_7 + rcq$rcq_11
+
 ##---- Descriptives ---------
 
-# Age - 
+# Timestamp
+range(rcq$Timestamp.x)
+
+# Age -
+describe(rcq$age)
 by(rcq$age, rcq$sex, summary)
 bwplot(~age|sex*education, data=rcq)
 
 # Sex - 
-table(rcq$sex)
+round(prop.table(table(rcq$sex)),3)
 by(rcq$sex, rcq$education, summary)
-
 
 # Education - 
 tableEducation  <- sort(table(rcq$education), decreasing=TRUE)
-round(cbind(tableEducation/length(rcq$education)),2)
-
-# Audit Score
-boxplot(Result ~sex, data=rcq)
-bwplot(~Result|sex*education, data=rcq)
+cbind(round(prop.table(tableEducation),3))
 
 # Work situation
+cbind(round(prop.table(table(rcq$Work.situation)),3))
 by(rcq$Result, rcq$Work.situation, summary)
+
+# Region
+cbind(round(prop.table(sort(table(rcq$region), decreasig=TRUE)),3))
+
+# Audit Score
+cbind(round(prop.table(sort(table(rcq$auditRec), decreasig=TRUE)),3))
+boxplot(Result ~sex, data=rcq)
+bwplot(~Result|sex*education, data=rcq)
 
 # RCQ classification vs. Audit
 by(rcq$Result, rcq$rcq_outcome, summary)
 bwplot(~Result|rcq_outcome, data=rcq)
 
 
-# Audit - 
-# Barplot 
-tableAudit  <- table(rcqValid$auditRec) # creating table
-xtable(tableAudit, caption="Participants consumption zones") # table 4 LaTeX
-round(cbind(tableAudit/length(rcqValid$auditRec)),2) # simply % table
-barplot(tableAudit, xlim=c(0,7), ylim=c(0,300), space=0.1, beside=TRUE, col= brewer.pal(4, "Accent"), cex.names=.95) # barplot
-
-# Province
-## importing map
-brasil  <- url("http://biogeo.ucdavis.edu/data/gadm2/R/BRA_adm1.RData")
-print(load(brasil))
-close(brasil)
-
-## plotting data on the map
-freq <- c(0,8,0,3,44,27,36,18,11,11,9,10,70,3,7,30,17,4,57,7,32,0,1,16,128,2,1)
-cutFreq  <- cut(freq, 5)
-levels(cutFreq)  <- c("<25", "25 - 51", "52-77", "78-102", ">102")
-gadm$freq <- cutFreq
-col  <- brewer.pal(5, "BuPu")
-spplot(gadm, "freq", col.regions=col, col=grey(.9), border="white", par.settings = list(axis.line = list(col = 'transparent')))
-
-# work situation
-tableWork  <- table(rcqValid$Work.situation)
-xtable(tableWork)
-
 ##---- Psychometric properties  ---------
 
-# ---- WHO version ----
-
-#computing using WHO criteria
-rcqValid$scorePc  <- rcqValid$rcq_1 + rcqValid$rcq_5 + rcqValid$rcq_10 + rcqValid$rcq_12
-rcqValid$scoreC <- rcqValid$rcq_3 + rcqValid$rcq_4 + rcqValid$rcq_8 + rcqValid$rcq_9
-rcqValid$scoreA  <- rcqValid$rcq_2 + rcqValid$rcq_6 + rcqValid$rcq_7 + rcqValid$rcq_11
-
 # Descriptive statistics for questionnaire
-sapply(rcqValid[,34:45], summary)
+describe(rcq[,20:31])
 
 # KMO Kaiser-Meyer-Olkin Measure of Sampling Adequacy
 # Function by G. Jay Kerns, Ph.D., Youngstown State University (http://tolstoy.newcastle.edu.au/R/e2/help/07/08/22816.html)
@@ -184,110 +179,125 @@ kmo = function( data ){
                AIR = AIR )
   return(ans)
 }
-
-kmo(rcqValid[34:45])
+kmo(rcq[20:31])
 
 # Barlett test of homogeneity
-bartlett.test(rcqValid[34:45])
-
-# Correlations among itens
-rcorr(as.matrix(rcqValid[50:52]), type="pearson")
-round(sapply(rcqValid[,46:48], mean),2)
-
+bartlett.test(rcq[20:31])
 
 # Defining factors
-fa.parallel(rcqValid[34:45], fm="pa") # yields 2 components
-VSS(rcqValid[34:45], rotate="varimax") # yields 2 components
-# Cattel's Scree
-fa.parallel(rcqValid[34:45], fm="ml", fa="pc") # 2 components
+fa.parallel.poly(rcq[20:31], fm="pa") # yields 2 components
+VSS(rcq[20:31], rotate="varimax") # yields 2 components
 
-# Principal components analysis
-pca <- principal(rcqValid[34:45], nfactors = 2, rotate = "varimax")
 
-# Observing loadings
-print.psych(pca, cut = 0.4, sort = FALSE) # data revealed that item 5 was not related with any factors. As a possible solution, we decided to remove 1 item for each subscale. Therefore, we removed 3 items: 2,5,8.
+# Principal components analysis 
+## Original scale
 
-#----- Short version ----
-shortRcq  <- rcqValid[, c("rcq_1", "rcq_3","rcq_4","rcq_6","rcq_7","rcq_9","rcq_10","rcq_11", "rcq_12")]
+### Model
+pca <- principal(rcq[20:31], nfactors = 2, rotate = "varimax")
+### Summary
+pcResult  <- print.psych(pca, cut = 0.3, sort = FALSE) # data revealed that item 5 was not related with any factors. Thus, I removed it and perform the model again.
 
-#subscales
-shortPc  <- rcqValid[, c("rcq_1", "rcq_10","rcq_12")]
-shortC  <- rcqValid[, c("rcq_3","rcq_4","rcq_9")]
-shortA  <- rcqValid[, c("rcq_6","rcq_7","rcq_11")]
-
-# Defining factors
-fa.parallel(shortRcq, fm="pa") # yields 2 components
-VSS(shortRcq, rotate="varimax") # yields 2 components
-# Cattel's Scree
-fa.parallel(shortRcq, fm="ml", fa="pc") # 2 components
-
-## Principal components analysis
-pcaShort <- principal(shortRcq, nfactors = 2, rotate = "varimax")
-print.psych(pcaShort, cut=0.3)
-
-# Cronbach's alpha New Version
-#main scale
-alpha(shortRcq) # alpha .85
-#subscales
-alpha(shortPc) # pre-contemplation - alpha .81
-alpha(shortC)  # contemplation - alpha .81
-alpha(shortA) # action - alpha .80
+## Scale with item 5 dropped
+rcq11  <- rcq[, c("rcq_1", "rcq_2", "rcq_3", "rcq_4", "rcq_6", "rcq_7", "rcq_8", "rcq_9", "rcq_10", "rcq_11", "rcq_12")]
+pca <- principal(rcq11, nfactors = 2, rotate = "varimax")
+### Summary
+print.psych(pca, cut = 0.3)
 
 # Summing factors
-rcqValid$rcqPc  <- rcqValid$rcq_1 + rcqValid$rcq_10 + rcqValid$rcq_12
-rcqValid$rcqC  <- rcqValid$rcq_3 + rcqValid$rcq_4 + rcqValid$rcq_9
-rcqValid$rcqA  <- rcqValid$rcq_6 + rcqValid$rcq_7 + rcqValid$rcq_11
+## Action
+rcq$scoreA  <- (rcq$rcq_2 + rcq$rcq_6 + rcq$rcq_7 + rcq$rcq_11) / 4 
+
+## Contemplation
+rcq$rcq_1 <- Recode(rcq$rcq_1, "1='5' ; 2='4' ; 3 = '3'; 3 = '3'; 4 = '2'; 5 = '1'")
+rcq$rcq_10 <- Recode(rcq$rcq_10, "1='5' ; 2='4' ; 3 = '3'; 3 = '3'; 4 = '2'; 5 = '1'")
+rcq$rcq_12 <- Recode(rcq$rcq_12, "1='5' ; 2='4' ; 3 = '3'; 3 = '3'; 4 = '2'; 5 = '1'")
+
+rcq$scoreC  <- (rcq$rcq_1 + rcq$rcq_10 + rcq$rcq_12 + rcq$rcq_3 + rcq$rcq_4 + rcq$rcq_8 + rcq$rcq_9) / 7
+
+# PreCon + Con
+preo  <- rcq[, c("rcq_1", "rcq_3", "rcq_4", "rcq_8", "rcq_9", "rcq_10", "rcq_12")]
+
+# 11 items RCQ
+alpha(rcq11) # alpha .88
+
+#subscales
+alpha(preo)
+alpha(action)
 
 # Comparing subscales scores
-cor(rcqValid)
-rcor.test(rcqValid[,51:53], p.adjust= TRUE, p.adjust.method="bonferroni")
+rcor.test(rcq[,c("scoreC","scoreA")], p.adjust= TRUE, method="kendall", p.adjust.method="bonferroni")
+describe(rcq[,c("scoreC","scoreA")])
 
 
+#  ORIGINAL COMPARISIONS ----
 # Creating proflies based on Heather et al. (1991)
-rcqValid$heather
-rcqValid$heather[rcqValid$rcqA  == rcqValid$rcqC & rcqValid$rcqA != rcqValid$rcqPc & rcqValid$rcqPc != rcqValid$rcqC]    <- "Tie A-C"
-rcqValid$heather[rcqValid$rcqA  == rcqValid$rcqPc & rcqValid$rcqA != rcqValid$rcqC & rcqValid$rcqPc != rcqValid$rcqC]    <- "Tie A-Pc"
-rcqValid$heather[rcqValid$rcqPc == rcqValid$rcqC & rcqValid$rcqPc != rcqValid$rcqA & rcqValid$rcqPc != rcqValid$rcqA]    <- "Tie C-Pc"
-rcqValid$heather[rcqValid$rcqPc == rcqValid$rcqC & rcqValid$rcqPc == rcqValid$rcqA]    <- "Triple Tie"
-rcqValid$heather[rcqValid$rcqA  > rcqValid$rcqC & rcqValid$rcqA > rcqValid$rcqPc]    <- "Action"
-rcqValid$heather[rcqValid$rcqC  > rcqValid$rcqA & rcqValid$rcqC > rcqValid$rcqPc]    <- "Contemplation"
-rcqValid$heather[rcqValid$rcqPc > rcqValid$rcqC & rcqValid$rcqPc > rcqValid$rcqA]    <- "Pre Contemplation"
+rcq$heather
+rcq$heather[rcq$rcqA  == rcq$rcqC & rcq$rcqA != rcq$rcqPc & rcq$rcqPc != rcq$rcqC]    <- "Tie A-C"
+rcq$heather[rcq$rcqA  == rcq$rcqPc & rcq$rcqA != rcq$rcqC & rcq$rcqPc != rcq$rcqC]    <- "Tie A-Pc"
+rcq$heather[rcq$rcqPc == rcq$rcqC & rcq$rcqPc != rcq$rcqA & rcq$rcqPc != rcq$rcqA]    <- "Tie C-Pc"
+rcq$heather[rcq$rcqPc == rcq$rcqC & rcq$rcqPc == rcq$rcqA]    <- "Triple Tie"
+rcq$heather[rcq$rcqA  > rcq$rcqC & rcq$rcqA > rcq$rcqPc]    <- "Action"
+rcq$heather[rcq$rcqC  > rcq$rcqA & rcq$rcqC > rcq$rcqPc]    <- "Contemplation"
+rcq$heather[rcq$rcqPc > rcq$rcqC & rcq$rcqPc > rcq$rcqA]    <- "Pre Contemplation"
 
 ## Heather with correction
-rcqValid$heatherC[rcqValid$rcqA  >= rcqValid$rcqC & rcqValid$rcqA >= rcqValid$rcqPc]    <- "Action"
-rcqValid$heatherC[rcqValid$rcqC  > rcqValid$rcqA & rcqValid$rcqC > rcqValid$rcqPc]    <- "Contemplation"
-rcqValid$heatherC[rcqValid$rcqPc > rcqValid$rcqC & rcqValid$rcqPc > rcqValid$rcqA]    <- "Pre Contemplation"
+rcq$heatherC[rcq$rcqA  >= rcq$rcqC & rcq$rcqA >= rcq$rcqPc]    <- "Action"
+rcq$heatherC[rcq$rcqC  > rcq$rcqA & rcq$rcqC > rcq$rcqPc]    <- "Contemplation"
+rcq$heatherC[rcq$rcqPc > rcq$rcqC & rcq$rcqPc > rcq$rcqA]    <- "Pre Contemplation"
 
-cbind(table(rcqValid$heatherC))
+cbind(table(rcq$heatherC))
 
 # Creating profiles based on Rollnick et al. (1992) adapted for the 3 point subscales
-rcqValid$profile[rcqValid$rcqPc > 9 & rcqValid$rcqC > 9 & rcqValid$rcqA > 9 ]  <- "A (+ + +)"
-rcqValid$profile[rcqValid$rcqPc > 9 & rcqValid$rcqC > 9 & rcqValid$rcqA <= 9 ]  <- "B (+ + –)"
-rcqValid$profile[rcqValid$rcqPc > 9 & rcqValid$rcqC <= 9 & rcqValid$rcqA > 9 ]  <- "C (+ – +)"
-rcqValid$profile[rcqValid$rcqPc > 9 & rcqValid$rcqC <= 9 & rcqValid$rcqA <= 9 ]  <- "D (+ – –)"
-rcqValid$profile[rcqValid$rcqPc <= 9 & rcqValid$rcqC > 9 & rcqValid$rcqA > 9 ]  <- "E (– + +)"
-rcqValid$profile[rcqValid$rcqPc <= 9 & rcqValid$rcqC > 9 & rcqValid$rcqA <= 9 ]  <- "F (– + –)"
-rcqValid$profile[rcqValid$rcqPc <= 9 & rcqValid$rcqC <= 9 & rcqValid$rcqA > 9 ]  <- "G (– – +)"
-rcqValid$profile[rcqValid$rcqPc <= 9 & rcqValid$rcqC <= 9 & rcqValid$rcqA <= 9 ]  <- "H (– – –)"
-
-cbind(table(rcqValid$profile))
+rcq$profile[rcq$rcqPc > 9 & rcq$rcqC > 9 & rcq$rcqA > 9 ]  <- "A (+ + +)"
+rcq$profile[rcq$rcqPc > 9 & rcq$rcqC > 9 & rcq$rcqA <= 9 ]  <- "B (+ + –)"
+rcq$profile[rcq$rcqPc > 9 & rcq$rcqC <= 9 & rcq$rcqA > 9 ]  <- "C (+ – +)"
+rcq$profile[rcq$rcqPc > 9 & rcq$rcqC <= 9 & rcq$rcqA <= 9 ]  <- "D (+ – –)"
+rcq$profile[rcq$rcqPc <= 9 & rcq$rcqC > 9 & rcq$rcqA > 9 ]  <- "E (– + +)"
+rcq$profile[rcq$rcqPc <= 9 & rcq$rcqC > 9 & rcq$rcqA <= 9 ]  <- "F (– + –)"
+rcq$profile[rcq$rcqPc <= 9 & rcq$rcqC <= 9 & rcq$rcqA > 9 ]  <- "G (– – +)"
+rcq$profile[rcq$rcqPc <= 9 & rcq$rcqC <= 9 & rcq$rcqA <= 9 ]  <- "H (– – –)"
 
 
-#- IRT -----
+
+#- IRT PLAYGROUND -----
 ## Subscales Graded Response Model
 
+## Checking unidimensionality
+### 1 Factor
+
+#### preo
+m1f  <- mirt(preo, 1, rotate="oblimin")
+summary(m1f)
+residuals(m1f)
+
+#### Action
+m1f  <- mirt(action, 1, rotate="oblimin")
+summary(m1f)
+plot(m1f)
+
+itemplot(m1f, 7, 'trace')
+
+residuals(m1f, type="LDG2")
+coef(m1f)
+
+# factor scores
+scores  <- fscores(m1f, full.scores = TRUE)
+
+summary(scores$)
+
+
 ## Pre contemplation
-pc2Par  <- grm(shortPc); pc1Par  <- grm(shortPc, constrained = T) # Comparing models - one parameter vs. 2 parameter
+preo2p  <- grm(preo); preo1p  <- grm(preo, constrained = T) # Comparing models - one parameter vs. 2 parameter
 ### Comparing, using BIC and AIC as criteria. (Less is better)
-anova(pc1Par, pc2Par) # 2 parameters model (pc2Par) seems to fit data better
+anova(preo1p, preo2p) # 2 parameters model (preo2p) seems to fit data better
 
 ### Plotting Item Characteristic Curves
-plot(pc2Par, type= "IIC", col = brewer.pal(4,"Dark2"), legend= TRUE) 
-plot(pc2Par, type= "ICC", col = brewer.pal(4,"Dark2"), legend= TRUE)
-plot(pc2Par, type= "OCCu", col = brewer.pal(4,"Dark2"), legend= TRUE)
+plot(preo2p, type= "IIC", col = brewer.pal(4,"Dark2"), legend= TRUE) 
+plot(preo2p, type= "ICC", col = brewer.pal(4,"Dark2"), legend= TRUE)
+plot(preo2p, type= "OCCu", col = brewer.pal(4,"Dark2"), legend= TRUE)
 
 ### Coeficients
-coef(pc2Par)
+coef(preo2p)
 
 ## Contemplation
 c2Par  <- grm(shortC); c1Par  <- grm(shortC, constrained = T) # Comparing models - one parameter vs. 2 parameter
@@ -321,40 +331,24 @@ scoreContemplation  <- factor.scores(c2Par, resp.patterns=shortC)
 scoreAction  <- factor.scores(a2Par, resp.patterns=shortA)
 
 
-boxplot(scorePre$score.dat$z1 ~ rcqValid$auditRec)
-boxplot(scoreContemplation$score.dat$z1 ~ rcqValid$auditRec)
-boxplot(scoreAction$score.dat$z1 ~ rcqValid$auditRec)
+boxplot(scorePre$score.dat$z1 ~ rcq$auditRec)
+boxplot(scoreContemplation$score.dat$z1 ~ rcq$auditRec)
+boxplot(scoreAction$score.dat$z1 ~ rcq$auditRec)
 
-by(scoreContemplation$score.dat$z1, rcqValid$auditRec, mean)
+by(scoreContemplation$score.dat$z1, rcq$auditRec, mean)
 
 
 # Thetas Scores
-plot(scoreAction$score.dat$z1, rcqValid$rcqA, type = "p", xlab = "Thetas", ylab = "Soma bruta da escala")
-cor(scoreAction$score.dat$z1, rcqValid$rcqA)
+plot(scoreAction$score.dat$z1, rcq$rcqA, type = "p", xlab = "Thetas", ylab = "Soma bruta da escala")
+cor(scoreAction$score.dat$z1, rcq$rcqA)
 
-plot(scoreContemplation$score.dat$z1, rcqValid$rcqC, type = "p", xlab = "Thetas", ylab = "Soma bruta da escala")
-cor(scoreContemplation$score.dat$z1, rcqValid$rcqC)
+plot(scoreContemplation$score.dat$z1, rcq$rcqC, type = "p", xlab = "Thetas", ylab = "Soma bruta da escala")
+cor(scoreContemplation$score.dat$z1, rcq$rcqC)
 
-plot(scorePre$score.dat$z1, rcqValid$rcqPc, type = "p", xlab = "Thetas", ylab = "Soma bruta da escala")
-cor(scorePre$score.dat$z1, rcqValid$rcqPc)
+plot(scorePre$score.dat$z1, rcq$rcqPc, type = "p", xlab = "Thetas", ylab = "Soma bruta da escala")
+cor(scorePre$score.dat$z1, rcq$rcqPc)
 
-#- CFA Confirmatory factor analysis ----
-library(lavaan)
 
-# specify the model
-rcq.model <- 'contemplation =~ rcq_3 + rcq_4 + rcq_9 + rcq_1 + rcq_10 + rcq_12
-              action   =~ rcq_6 + rcq_7 + rcq_11 '
 
-# fit the model
-fit <- cfa(rcq.model, data=rcqValid)
+cbind(table(rcq$profile))
 
-inspect(fit,"cov.lv")
-
-# display summary output
-summary(fit, fit.measures=TRUE)
-
-est  <- parameterEstimates(fit, ci = FALSE, standardized = TRUE)
-subset(est, op == "=~")
-
-# display
-semPaths(fit, title = FALSE, curvePivot = TRUE, whatLabels="stand", residuals=TRUE, intercepts=TRUE, layout="tree2")
