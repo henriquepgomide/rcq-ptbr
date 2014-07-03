@@ -21,7 +21,7 @@ for (j in 1:length(csvwId$files)) {
   
 }
 
-#---- RCQ Validation ------
+#---- LIBRARIES ------
 
 # Libraries
 library(psych)
@@ -33,7 +33,6 @@ library(semPlot)
 library(lattice)
 library(ltm)
 library(mirt)
-
 
 #------ PREPARING DATA  -------
 
@@ -63,7 +62,7 @@ write.csv(rcq, "rcq.csv")
 
 #------ DATA ANALYSIS -------
 
-## Open dataframe
+## Open dataframe 
 rcq  <- read.csv("rcq.csv")
 describe(rcq)
 
@@ -105,10 +104,17 @@ rcq$scorePc  <- rcq$rcq_1 + rcq$rcq_5 + rcq$rcq_10 + rcq$rcq_12
 rcq$scoreC <- rcq$rcq_3 + rcq$rcq_4 + rcq$rcq_8 + rcq$rcq_9
 rcq$scoreA  <- rcq$rcq_2 + rcq$rcq_6 + rcq$rcq_7 + rcq$rcq_11
 
-##---- Descriptives ---------
 
-# Timestamp
-range(rcq$Timestamp.x)
+### Write dataframe
+
+write.csv(rcq, "rcq_df.csv" )
+
+## --- OPEN DATA ----
+
+rcq  <- read.csv("rcq_df.csv")
+
+
+##---- Descriptives ---------
 
 # Age -
 describe(rcq$age)
@@ -142,66 +148,104 @@ bwplot(~Result|rcq_outcome, data=rcq)
 
 ##---- Psychometric properties  ---------
 
+
+# full RCQ
+
+# EFA ----
+
 # Descriptive statistics for questionnaire
-describe(rcq[,20:31])
+describe(fullRcq)
 
-# KMO Kaiser-Meyer-Olkin Measure of Sampling Adequacy
-# Function by G. Jay Kerns, Ph.D., Youngstown State University (http://tolstoy.newcastle.edu.au/R/e2/help/07/08/22816.html)
-kmo = function( data ){
-  library(MASS) 
-  X <- cor(as.matrix(data)) 
-  iX <- ginv(X) 
-  S2 <- diag(diag((iX^-1)))
-  AIS <- S2%*%iX%*%S2                      # anti-image covariance matrix
-  IS <- X+AIS-2*S2                         # image covariance matrix
-  Dai <- sqrt(diag(diag(AIS)))
-  IR <- ginv(Dai)%*%IS%*%ginv(Dai)         # image correlation matrix
-  AIR <- ginv(Dai)%*%AIS%*%ginv(Dai)       # anti-image correlation matrix
-  a <- apply((AIR - diag(diag(AIR)))^2, 2, sum)
-  AA <- sum(a) 
-  b <- apply((X - diag(nrow(X)))^2, 2, sum)
-  BB <- sum(b)
-  MSA <- b/(b+a)                        # indiv. measures of sampling adequacy
-  AIR <- AIR-diag(nrow(AIR))+diag(MSA)  # Examine the anti-image of the correlation matrix. That is the  negative of the partial correlations, partialling out all other variables.
-  kmo <- BB/(AA+BB)                     # overall KMO statistic
-  # Reporting the conclusion 
-  if (kmo >= 0.00 && kmo < 0.50){test <- 'The KMO test yields a degree of common variance unacceptable for FA.'} 
-  else if (kmo >= 0.50 && kmo < 0.60){test <- 'The KMO test yields a degree of common variance miserable.'} 
-  else if (kmo >= 0.60 && kmo < 0.70){test <- 'The KMO test yields a degree of common variance mediocre.'} 
-  else if (kmo >= 0.70 && kmo < 0.80){test <- 'The KMO test yields a degree of common variance middling.' } 
-  else if (kmo >= 0.80 && kmo < 0.90){test <- 'The KMO test yields a degree of common variance meritorious.' }
-  else { test <- 'The KMO test yields a degree of common variance marvelous.' }
-  
-  ans <- list( overall = kmo,
-               report = test,
-               individual = MSA,
-               AIS = AIS,
-               AIR = AIR )
-  return(ans)
-}
-kmo(rcq[20:31])
+# KMO = .89
+KMO(fullRcq)
 
-# Barlett test of homogeneity
-bartlett.test(rcq[20:31])
+# Barlett test of homogeneity; K²=169.92; p < 0.001
+bartlett.test(fullRcq) 
 
-# Defining factors
-fa.parallel.poly(rcq[20:31], fm="pa") # yields 2 components
-VSS(rcq[20:31], rotate="varimax") # yields 2 components
+# Factor analysis
+
+## 1-factor model
+rcq1factor  <- rcq[,21:32]
+
+# Recode preContemplation into Contemplation
+rcq1factor$rcq_1 <- Recode(rcq1factor$rcq_1, "1='5' ; 2='4' ; 3 = '3'; 3 = '3'; 4 = '2'; 5 = '1'")
+rcq1factor$rcq_5 <- Recode(rcq1factor$rcq_5, "1='5' ; 2='4' ; 3 = '3'; 3 = '3'; 4 = '2'; 5 = '1'")
+rcq1factor$rcq_10 <- Recode(rcq1factor$rcq_10, "1='5' ; 2='4' ; 3 = '3'; 3 = '3'; 4 = '2'; 5 = '1'")
+rcq1factor$rcq_12 <- Recode(rcq1factor$rcq_12, "1='5' ; 2='4' ; 3 = '3'; 3 = '3'; 4 = '2'; 5 = '1'")
+
+## fa with 1 factor
+fa1 <- fa.poly(rcq1factor, nfactors = 1)
+print(fa1, cut = .3)
+
+## 2-factor model
+rcq2factor  <- rcq[,21:32]
+
+## fa with 3 factor
+fa2 <- fa.poly(rcq2factor, nfactors = 2)
+print(fa2, cut = .3)
+
+## 3-factor model
+rcq3factor  <- rcq[,21:32]
+
+## fa with 3 factor
+fa3 <- fa.poly(rcq3factor, nfactors = 3)
+print(fa3, cut = .3)
 
 
-# Principal components analysis 
-## Original scale
+### CFA ----
 
-### Model
-pca <- principal(rcq[20:31], nfactors = 2, rotate = "varimax")
-### Summary
-pcResult  <- print.psych(pca, cut = 0.3, sort = FALSE) # data revealed that item 5 was not related with any factors. Thus, I removed it and perform the model again.
+library(lavaan)
 
-## Scale with item 5 dropped
-rcq11  <- rcq[, c("rcq_1", "rcq_2", "rcq_3", "rcq_4", "rcq_6", "rcq_7", "rcq_8", "rcq_9", "rcq_10", "rcq_11", "rcq_12")]
-pca <- principal(rcq11, nfactors = 2, rotate = "varimax")
-### Summary
-print.psych(pca, cut = 0.3)
+# 1-Factor Model
+
+RCQ.1f.MODEL  <- ' # Latent variables
+                   readiness       =~ rcq_1 + rcq_2 + rcq_3 + rcq_4
+                                   + rcq_5 + rcq_6 + rcq_7 + rcq_8
+                                   + rcq_9 + rcq_10 + rcq_11 + rcq_12                 
+                '
+
+cfa1f  <- cfa(RCQ.1f.MODEL,  data = rcq1factor)
+
+
+inspect(cfa1f)
+summary(cfa1f, fit.measures = TRUE)
+
+
+# 3-Factor Model with Correlation
+
+RCQ.3fr.MODEL  <- '# Latent variables                  
+                  Con       =~ rcq_1 + rcq_5 + rcq_10 + rcq_12
+                  Precont   =~ rcq_3 + rcq_4 + rcq_8 + rcq_9
+                  Action    =~ rcq_2 + rcq_6 + rcq_7 + rcq_11
+
+                  # Factor variances
+                  Con      ~~ Precont
+                                  
+                '
+
+cfa3fr  <- cfa(RCQ.3fr.MODEL,  data = rcq3factor)
+
+inspect(cfa3fr, "cov.lv")
+summary(cfa3fr, fit.measures = TRUE)
+
+
+# 3-Factor Model with no Correlation
+
+RCQ.3f.MODEL  <- '# Latent variables                  
+                  Con       =~ rcq_1 + rcq_5 + rcq_10 + rcq_12
+                  Precont   =~ rcq_3 + rcq_4 + rcq_8 + rcq_9
+                  Action    =~ rcq_2 + rcq_6 + rcq_7 + rcq_11              
+                                  
+                '
+
+cfa3f  <- cfa(RCQ.3f.MODEL,  data = rcq3factor)
+
+inspect(cfa3fr)
+summary(cfa3fr, fit.measures = TRUE)
+
+
+
+anova(cfa1f, cfa3f, cfa3fr)
 
 # Summing factors
 ## Action
@@ -209,6 +253,7 @@ rcq$scoreA  <- (rcq$rcq_2 + rcq$rcq_6 + rcq$rcq_7 + rcq$rcq_11) / 4
 
 ## Contemplation
 rcq$rcq_1 <- Recode(rcq$rcq_1, "1='5' ; 2='4' ; 3 = '3'; 3 = '3'; 4 = '2'; 5 = '1'")
+rcq$rcq_5 <- Recode(rcq$rcq_5, "1='5' ; 2='4' ; 3 = '3'; 3 = '3'; 4 = '2'; 5 = '1'")
 rcq$rcq_10 <- Recode(rcq$rcq_10, "1='5' ; 2='4' ; 3 = '3'; 3 = '3'; 4 = '2'; 5 = '1'")
 rcq$rcq_12 <- Recode(rcq$rcq_12, "1='5' ; 2='4' ; 3 = '3'; 3 = '3'; 4 = '2'; 5 = '1'")
 
