@@ -201,32 +201,39 @@ library(lavaan)
 RCQ.1f.MODEL  <- ' # Latent variables
                    readiness       =~ rcq_1 + rcq_2 + rcq_3 + rcq_4
                                    + rcq_5 + rcq_6 + rcq_7 + rcq_8
-                                   + rcq_9 + rcq_10 + rcq_11 + rcq_12                 
-                '
+                                   + rcq_9 + rcq_10 + rcq_11 + rcq_12'
 
 cfa1f  <- cfa(RCQ.1f.MODEL,  data = rcq1factor)
 
 
-inspect(cfa1f)
-summary(cfa1f, fit.measures = TRUE)
+
+# 2-Factor Model 
+RCQ.2f.MODEL  <- ' # Latent variables
+                   Con   =~ rcq_1 + rcq_3 + rcq_3 + rcq_5 + 
+                            rcq_8 + rcq_9 + rcq_10 + rcq_12                                   
+                   Action =~ rcq_2 + rcq_6 + rcq_7 + rcq_11                 
+                '
+
+cfa2f  <- cfa(RCQ.2f.MODEL,  data = rcq1factor)
+
 
 
 # 3-Factor Model with Correlation
 
 RCQ.3fr.MODEL  <- '# Latent variables                  
-                  Con       =~ rcq_1 + rcq_5 + rcq_10 + rcq_12
+                  Con       =~ rcq_1 + rcq_5 + rcq_10  + rcq_12
                   Precont   =~ rcq_3 + rcq_4 + rcq_8 + rcq_9
                   Action    =~ rcq_2 + rcq_6 + rcq_7 + rcq_11
 
                   # Factor variances
                   Con      ~~ Precont
+                  Action   ~~ Con
+                  Precont  ~~ Action
+
                                   
                 '
 
 cfa3fr  <- cfa(RCQ.3fr.MODEL,  data = rcq3factor)
-
-inspect(cfa3fr, "cov.lv")
-summary(cfa3fr, fit.measures = TRUE)
 
 
 # 3-Factor Model with no Correlation
@@ -238,14 +245,34 @@ RCQ.3f.MODEL  <- '# Latent variables
                                   
                 '
 
-cfa3f  <- cfa(RCQ.3f.MODEL,  data = rcq3factor)
-
-inspect(cfa3fr)
-summary(cfa3fr, fit.measures = TRUE)
+cfa3f  <- cfa(RCQ.3f.MODEL,  data = rcq3factor, orthogonal=TRUE)
 
 
+# Comparing Models
+## Anova
+anova(cfa1f, cfa2f, cfa3f, cfa3fr)
 
-anova(cfa1f, cfa3f, cfa3fr)
+## Summary
+summary(cfa1f, standardized=TRUE, fit.measures=TRUE, rsq=TRUE, modindices=TRUE)  #  CFI = .850; TLI = .808; RMSEA = .145; SRMR = .119 
+summary(cfa2f, standardized=TRUE, fit.measures=TRUE, rsq=TRUE, modindices=TRUE)  #  CFI = .850; TLI = .808; RMSEA = .145; SRMR = .119 
+summary(cfa3f, standardized=TRUE, fit.measures=TRUE, rsq=TRUE, modindices=TRUE)  #  CFI = .850; TLI = .808; RMSEA = .145; SRMR = .119 
+summary(cfa3fr, standardized=TRUE, fit.measures=TRUE, rsq=TRUE, modindices=TRUE) #  CFI = .856; TLI = .813; RMSEA = .143; SRMR = .120
+
+## Model Loadings
+Est <- parameterEstimates(cfa3fr, ci = FALSE, standardized = TRUE)
+subset(Est, op == "=~")
+
+## Modification indices
+MI <- modificationIndices(cfa3fr)
+subset(MI, mi > 10)
+
+fitMeasures(cfa3fr, fit.measures = c("chisq", "df", "cfi", "rmsea", "rmsea.ci.lower", "rmsea.ci.upper"))
+fitMeasures(cfa1f, fit.measures = c("chisq", "df", "cfi", "rmsea", "rmsea.ci.lower", "rmsea.ci.upper"))
+fitMeasures(cfa3f, fit.measures = c("chisq", "df", "cfi", "rmsea", "rmsea.ci.lower", "rmsea.ci.upper"))
+
+# Graphing solution
+library(qgraph)
+qgraph(cfa3f, layout = "tree", titles = FALSE)
 
 # Summing factors
 ## Action
