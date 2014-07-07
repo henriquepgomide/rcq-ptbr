@@ -25,14 +25,9 @@ for (j in 1:length(csvwId$files)) {
 
 # Libraries
 library(psych)
-library(RColorBrewer)
 library(sp)
 library(car)
-library(MBESS)
-library(semPlot)
 library(lattice)
-library(ltm)
-library(mirt)
 
 #------ PREPARING DATA  -------
 
@@ -152,7 +147,9 @@ bwplot(~Result|rcq_outcome, data=rcq)
 # full RCQ
 
 # EFA ----
-
+fullRcq  <- rcq[,21:32]
+names(fullRcq)
+      
 # Descriptive statistics for questionnaire
 describe(fullRcq)
 
