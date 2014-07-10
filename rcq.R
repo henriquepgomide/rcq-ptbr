@@ -25,6 +25,7 @@ for (j in 1:length(csvwId$files)) {
 
 # Libraries
 library(psych)
+library(lavaan)
 library(sp)
 library(car)
 library(lattice)
@@ -132,7 +133,7 @@ by(rcq$Result, rcq$Work.situation, summary)
 cbind(round(prop.table(sort(table(rcq$region), decreasig=TRUE)),3))
 
 # Audit Score
-cbind(round(prop.table(sort(table(rcq$auditRec), decreasig=TRUE)),3))
+cbind(round(prop.table(sort(table(rcq$auditRec), decreasig=TRUE)),3))*100
 boxplot(Result ~sex, data=rcq)
 bwplot(~Result|sex*education, data=rcq)
 
@@ -143,26 +144,35 @@ bwplot(~Result|rcq_outcome, data=rcq)
 
 ##---- Psychometric properties  ---------
 
+set.seed(12345)
+rcq_rand <- rcq[order(runif(713)), ]
 
-# full RCQ
+# Split data frames for analysis
+rcqEfa  <- rcq_rand[1:356, ]   # Exploratory factor analysis data
+rcqCfa  <- rcq_rand[357:713, ] # Confirmatory factor analysis data
 
-# EFA ----
-fullRcq  <- rcq[,21:32]
-names(fullRcq)
+# Exploratory Factor Analysis ----
+rcqEfa_complete  <- rcqEfa[,22:33] # Select just the RCQ items
       
 # Descriptive statistics for questionnaire
-describe(fullRcq)
+describe(rcqEfa_complete)
 
 # KMO = .89
-KMO(fullRcq)
+KMO(rcqEfa_complete)
 
 # Barlett test of homogeneity; K²=169.92; p < 0.001
-bartlett.test(fullRcq) 
+bartlett.test(rcqEfa_complete) 
+
+# Parallel Analysis with polychoric correlations and minimal residuals method
+fa.parallel.poly(rcqEfa_complete, fm="minres", fa="fa")
+
+# Very simple structure
+VSS(rcqEfa_complete)
 
 # Factor analysis
 
 ## 1-factor model
-rcq1factor  <- rcq[,21:32]
+rcq1factor  <- rcqEfa_complete
 
 # Recode preContemplation into Contemplation
 rcq1factor$rcq_1 <- Recode(rcq1factor$rcq_1, "1='5' ; 2='4' ; 3 = '3'; 3 = '3'; 4 = '2'; 5 = '1'")
@@ -171,14 +181,14 @@ rcq1factor$rcq_10 <- Recode(rcq1factor$rcq_10, "1='5' ; 2='4' ; 3 = '3'; 3 = '3'
 rcq1factor$rcq_12 <- Recode(rcq1factor$rcq_12, "1='5' ; 2='4' ; 3 = '3'; 3 = '3'; 4 = '2'; 5 = '1'")
 
 ## fa with 1 factor
-fa1 <- fa.poly(rcq1factor, nfactors = 1)
+fa1 <- fa.poly(rcq1factor, nfactors = 1, rotate="oblimin", fm="minres")
 print(fa1, cut = .3)
 
 ## 2-factor model
-rcq2factor  <- rcq[,21:32]
+rcq2factor  <- rcqEfa_complete
 
 ## fa with 3 factor
-fa2 <- fa.poly(rcq2factor, nfactors = 2)
+fa2 <- fa.poly(rcq2factor, nfactors = 2, rotate="oblimin", fm="minres")
 print(fa2, cut = .3)
 
 ## 3-factor model
