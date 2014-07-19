@@ -161,7 +161,7 @@ describe(rcqEfa_complete)
 KMO(rcqEfa_complete)
 
 # Barlett test of homogeneity; K²=169.92; p < 0.001
-bartlett.test(rcqEfa_complete) 
+bartlett.test(rcqEfa_complete)
 
 # Parallel Analysis with polychoric correlations and minimal residuals method
 fa.parallel.poly(rcqEfa_complete, fm="minres", fa="fa")
@@ -181,13 +181,13 @@ rcq1factor$rcq_10 <- Recode(rcq1factor$rcq_10, "1='5' ; 2='4' ; 3 = '3'; 3 = '3'
 rcq1factor$rcq_12 <- Recode(rcq1factor$rcq_12, "1='5' ; 2='4' ; 3 = '3'; 3 = '3'; 4 = '2'; 5 = '1'")
 
 ## fa with 1 factor
-fa1 <- fa.poly(rcq1factor, nfactors = 1, rotate="oblimin", fm="minres")
+fa1 <- fa.poly(rcq1factor, nfactors = 1,  fm="minres")
 print(fa1, cut = .3)
 
 ## 2-factor model
 rcq2factor  <- rcqEfa_complete
 
-## fa with 3 factor
+## fa with 2 factor
 fa2 <- fa.poly(rcq2factor, nfactors = 2, rotate="oblimin", fm="minres")
 print(fa2, cut = .3)
 
@@ -198,6 +198,14 @@ rcq3factor  <- rcq[,21:32]
 fa3 <- fa.poly(rcq3factor, nfactors = 3)
 print(fa3, cut = .3)
 
+### Reliability ----
+alpha(rcq2factor)
+
+# 1st factor
+alpha(rcq2factor[,c(1,3,4,5,8,9,10,12)])
+
+# 2nd factor
+alpha(rcq2factor[,-c(1,3,4,5,8,9,10,12)])
 
 ### CFA ----
 
