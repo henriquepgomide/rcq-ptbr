@@ -184,6 +184,11 @@ rcq1factor$rcq_12 <- Recode(rcq1factor$rcq_12, "1='5' ; 2='4' ; 3 = '3'; 3 = '3'
 fa1 <- fa.poly(rcq1factor, nfactors = 1,  fm="minres")
 print(fa1, cut = .3)
 
+### Improved version fa with 1 factor
+rcq1factori  <- rcq1factor[, -c(2,5,6,7,11)]
+fa1i  <- fa.poly(rcq1factori, nfactors = 1,  fm="minres")
+print(fa1i, cut = .3)
+
 ## 2-factor model
 rcq2factor  <- rcqEfa_complete
 
@@ -191,8 +196,13 @@ rcq2factor  <- rcqEfa_complete
 fa2 <- fa.poly(rcq2factor, nfactors = 2, rotate="oblimin", fm="minres")
 print(fa2, cut = .3)
 
+### Improved version fa with 2 factor
+rcq2factori  <- rcq2factor[, -c(2,5,7)]
+fa2i  <- fa.poly(rcq2factori, nfactors = 2,  fm="minres")
+print(fa2i, cut = .3)
+
 ## 3-factor model
-rcq3factor  <- rcq[,21:32]
+rcq3factor  <- rcq[,22:33]
 
 ## fa with 3 factor
 fa3 <- fa.poly(rcq3factor, nfactors = 3)
@@ -220,7 +230,12 @@ RCQ.1f.MODEL  <- ' # Latent variables
 
 cfa1f  <- cfa(RCQ.1f.MODEL,  data = rcq1factor)
 
+# 1-Factor Improved Reduced with the best loadings
+RCQ.1fi.MODEL  <- ' # Latent variables
+                   readiness       =~ rcq_1 +  rcq_4 +
+                                    rcq_8 + rcq_9 + rcq_10 + rcq_12'
 
+cfa1fi  <- cfa(RCQ.1fi.MODEL,  data = rcq1factori)
 
 # 2-Factor Model 
 RCQ.2f.MODEL  <- ' # Latent variables
@@ -231,10 +246,17 @@ RCQ.2f.MODEL  <- ' # Latent variables
 
 cfa2f  <- cfa(RCQ.2f.MODEL,  data = rcq1factor)
 
+# 2-Factor Improved version 
+RCQ.2fi.MODEL  <- ' # Latent variables
+Con   =~ rcq_1 + rcq_3 + rcq_8 + rcq_9 + rcq_10 + rcq_12                                   
+Action =~  rcq_6 +  rcq_11                 
+'
+
+cfa2fi  <- cfa(RCQ.2fi.MODEL,  data = rcqEfa_complete)
+# Does not work. Covariances matrices are negative! 
 
 
 # 3-Factor Model with Correlation
-
 RCQ.3fr.MODEL  <- '# Latent variables                  
                   Con       =~ rcq_1 + rcq_5 + rcq_10  + rcq_12
                   Precont   =~ rcq_3 + rcq_4 + rcq_8 + rcq_9
@@ -244,20 +266,15 @@ RCQ.3fr.MODEL  <- '# Latent variables
                   Con      ~~ Precont
                   Action   ~~ Con
                   Precont  ~~ Action
-
-                                  
                 '
 
 cfa3fr  <- cfa(RCQ.3fr.MODEL,  data = rcq3factor)
 
-
 # 3-Factor Model with no Correlation
-
 RCQ.3f.MODEL  <- '# Latent variables                  
                   Con       =~ rcq_1 + rcq_5 + rcq_10 + rcq_12
                   Precont   =~ rcq_3 + rcq_4 + rcq_8 + rcq_9
-                  Action    =~ rcq_2 + rcq_6 + rcq_7 + rcq_11              
-                                  
+                  Action    =~ rcq_2 + rcq_6 + rcq_7 + rcq_11                                                
                 '
 
 cfa3f  <- cfa(RCQ.3f.MODEL,  data = rcq3factor, orthogonal=TRUE)
@@ -265,13 +282,15 @@ cfa3f  <- cfa(RCQ.3f.MODEL,  data = rcq3factor, orthogonal=TRUE)
 
 # Comparing Models
 ## Anova
-anova(cfa1f, cfa2f, cfa3f, cfa3fr)
+anova(cfa1f, cfa1fi,  cfa2f, cfa3f, cfa3fr)
 
 ## Summary
-summary(cfa1f, standardized=TRUE, fit.measures=TRUE, rsq=TRUE, modindices=TRUE)  #  CFI = .850; TLI = .808; RMSEA = .145; SRMR = .119 
-summary(cfa2f, standardized=TRUE, fit.measures=TRUE, rsq=TRUE, modindices=TRUE)  #  CFI = .850; TLI = .808; RMSEA = .145; SRMR = .119 
-summary(cfa3f, standardized=TRUE, fit.measures=TRUE, rsq=TRUE, modindices=TRUE)  #  CFI = .850; TLI = .808; RMSEA = .145; SRMR = .119 
-summary(cfa3fr, standardized=TRUE, fit.measures=TRUE, rsq=TRUE, modindices=TRUE) #  CFI = .856; TLI = .813; RMSEA = .143; SRMR = .120
+summary(cfa1f, standardized=TRUE, fit.measures=TRUE, rsq=TRUE, modindices=TRUE)
+summary(cfa1fi, standardized=TRUE, fit.measures=TRUE, rsq=TRUE, modindices=TRUE)
+summary(cfa2f, standardized=TRUE, fit.measures=TRUE, rsq=TRUE, modindices=TRUE)
+summary(cfa3f, standardized=TRUE, fit.measures=TRUE, rsq=TRUE, modindices=TRUE)
+summary(cfa3fr, standardized=TRUE, fit.measures=TRUE, rsq=TRUE, modindices=TRUE)
+
 
 ## Model Loadings
 Est <- parameterEstimates(cfa3fr, ci = FALSE, standardized = TRUE)
@@ -281,13 +300,29 @@ subset(Est, op == "=~")
 MI <- modificationIndices(cfa3fr)
 subset(MI, mi > 10)
 
-fitMeasures(cfa3fr, fit.measures = c("chisq", "df", "cfi", "rmsea", "rmsea.ci.lower", "rmsea.ci.upper"))
-fitMeasures(cfa1f, fit.measures = c("chisq", "df", "cfi", "rmsea", "rmsea.ci.lower", "rmsea.ci.upper"))
-fitMeasures(cfa3f, fit.measures = c("chisq", "df", "cfi", "rmsea", "rmsea.ci.lower", "rmsea.ci.upper"))
+1f.fitmea <- fitMeasures(cfa1f, fit.measures = c("chisq", "df", "cfi", "rmsea", "rmsea.ci.lower", "rmsea.ci.upper"))
+
+fitMeasures(cfa1fi, fit.measures = c("chisq", "df", "cfi", "rmsea", "rmsea.ci.lower", "rmsea.ci.upper"))
+
+2f.fitmea <- fitMeasures(cfa2f, fit.measures = c("chisq", "df", "cfi", "rmsea", "rmsea.ci.lower", "rmsea.ci.upper"))
+3f.fitmea <- fitMeasures(cfa3f, fit.measures = c("chisq", "df", "cfi", "rmsea", "rmsea.ci.lower", "rmsea.ci.upper"))
+3fr.fitmea <- fitMeasures(cfa3fr, fit.measures = c("chisq", "df", "cfi", "rmsea", "rmsea.ci.lower", "rmsea.ci.upper"))
 
 # Graphing solution
 library(qgraph)
 qgraph(cfa3f, layout = "tree", titles = FALSE)
+
+
+# 2-Factor Model 
+RCQ.2fb.MODEL  <- ' # Latent variables
+Con   =~ rcq_1 + rcq_3 + rcq_3 +  
+rcq_8 + rcq_9 + rcq_10 + rcq_12                                   
+Action =~ rcq_6 + rcq_7 + rcq_11                 
+'
+
+cfa2fb  <- cfa(RCQ.2fb.MODEL,  data = rcq1factor)
+
+summary(cfa2fb, standardized=TRUE, fit.measures=TRUE, rsq=TRUE, modindices=TRUE)
 
 # Summing factors
 ## Action
