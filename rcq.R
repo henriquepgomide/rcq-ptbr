@@ -184,25 +184,13 @@ rcq1factor$rcq_12 <- Recode(rcq1factor$rcq_12, "1='5' ; 2='4' ; 3 = '3'; 3 = '3'
 fa1 <- fa.poly(rcq1factor, nfactors = 1,  fm="minres")
 print(fa1, cut = .3)
 
-### Improved version fa with 1 factor
-rcq1factori  <- rcq1factor[, -c(2,5,6,7,11)]
-fa1i  <- fa.poly(rcq1factori, nfactors = 1,  fm="minres")
-print(fa1i, cut = .3)
-
 ## 2-factor model
 rcq2factor  <- rcqEfa_complete
-
-## fa with 2 factor
 fa2 <- fa.poly(rcq2factor, nfactors = 2, rotate="oblimin", fm="minres")
 print(fa2, cut = .3)
 
-### Improved version fa with 2 factor
-rcq2factori  <- rcq2factor[, -c(2,5,7)]
-fa2i  <- fa.poly(rcq2factori, nfactors = 2,  fm="minres")
-print(fa2i, cut = .3)
-
 ## 3-factor model
-rcq3factor  <- rcq[,22:33]
+rcq3factor  <- rcqEfa_complete
 
 ## fa with 3 factor
 fa3 <- fa.poly(rcq3factor, nfactors = 3)
@@ -219,56 +207,45 @@ alpha(rcq2factor[,-c(1,3,4,5,8,9,10,12)])
 
 ### CFA ----
 
-library(lavaan)
+
+rcqCfa_complete  <- rcqCfa[,22:33]
+
+# 1-factor
+cfa.rcq1f  <- rcqCfa_complete 
+
+
+# Recode preContemplation into Contemplation
+cfa.rcq1f$rcq_1 <- Recode(cfa.rcq1f$rcq_1, "1='5' ; 2='4' ; 3 = '3'; 3 = '3'; 4 = '2'; 5 = '1'")
+cfa.rcq1f$rcq_5 <- Recode(cfa.rcq1f$rcq_5, "1='5' ; 2='4' ; 3 = '3'; 3 = '3'; 4 = '2'; 5 = '1'")
+cfa.rcq1f$rcq_10 <- Recode(cfa.rcq1f$rcq_10, "1='5' ; 2='4' ; 3 = '3'; 3 = '3'; 4 = '2'; 5 = '1'")
+cfa.rcq1f$rcq_12 <- Recode(cfa.rcq1f$rcq_12, "1='5' ; 2='4' ; 3 = '3'; 3 = '3'; 4 = '2'; 5 = '1'")
+
 
 # 1-Factor Model
-
 RCQ.1f.MODEL  <- ' # Latent variables
                    readiness       =~ rcq_1 + rcq_2 + rcq_3 + rcq_4
                                    + rcq_5 + rcq_6 + rcq_7 + rcq_8
                                    + rcq_9 + rcq_10 + rcq_11 + rcq_12'
 
-cfa1f  <- cfa(RCQ.1f.MODEL,  data = rcq1factor)
-
-# 1-Factor Improved Reduced with the best loadings
-RCQ.1fi.MODEL  <- ' # Latent variables
-                   readiness       =~ rcq_1 +  rcq_4 +
-                                    rcq_8 + rcq_9 + rcq_10 + rcq_12'
-
-cfa1fi  <- cfa(RCQ.1fi.MODEL,  data = rcq1factori)
+cfa1f  <- cfa(RCQ.1f.MODEL,  data = cfa.rcq1f)
 
 # 2-Factor Model 
 RCQ.2f.MODEL  <- ' # Latent variables
-                   Con   =~ rcq_1 + rcq_3 + rcq_3 + rcq_5 + 
+                   Con   =~ rcq_1 + rcq_3 + rcq_4 + rcq_5 + 
                             rcq_8 + rcq_9 + rcq_10 + rcq_12                                   
                    Action =~ rcq_2 + rcq_6 + rcq_7 + rcq_11                 
                 '
 
-cfa2f  <- cfa(RCQ.2f.MODEL,  data = rcq1factor)
-
-# 2-Factor Improved version 
-RCQ.2fi.MODEL  <- ' # Latent variables
-Con   =~ rcq_1 + rcq_3 + rcq_8 + rcq_9 + rcq_10 + rcq_12                                   
-Action =~  rcq_6 +  rcq_11                 
-'
-
-cfa2fi  <- cfa(RCQ.2fi.MODEL,  data = rcqEfa_complete)
-# Does not work. Covariances matrices are negative! 
-
+cfa2f  <- cfa(RCQ.2f.MODEL,  data = rcqCfa_complete)
 
 # 3-Factor Model with Correlation
 RCQ.3fr.MODEL  <- '# Latent variables                  
-                  Con       =~ rcq_1 + rcq_5 + rcq_10  + rcq_12
+                  Con       =~ rcq_1 + rcq_5 + rcq_10 + rcq_12
                   Precont   =~ rcq_3 + rcq_4 + rcq_8 + rcq_9
-                  Action    =~ rcq_2 + rcq_6 + rcq_7 + rcq_11
-
-                  # Factor variances
-                  Con      ~~ Precont
-                  Action   ~~ Con
-                  Precont  ~~ Action
+                  Action    =~ rcq_2 + rcq_6 + rcq_7 + rcq_11                 
                 '
 
-cfa3fr  <- cfa(RCQ.3fr.MODEL,  data = rcq3factor)
+cfa3fr  <- cfa(RCQ.3fr.MODEL,  data = rcqCfa_complete)
 
 # 3-Factor Model with no Correlation
 RCQ.3f.MODEL  <- '# Latent variables                  
@@ -277,41 +254,42 @@ RCQ.3f.MODEL  <- '# Latent variables
                   Action    =~ rcq_2 + rcq_6 + rcq_7 + rcq_11                                                
                 '
 
-cfa3f  <- cfa(RCQ.3f.MODEL,  data = rcq3factor, orthogonal=TRUE)
+cfa3f  <- cfa(RCQ.3f.MODEL,  data = rcqCfa_complete, orthogonal=TRUE)
 
-
-# Comparing Models
-## Anova
-anova(cfa1f, cfa1fi,  cfa2f, cfa3f, cfa3fr)
 
 ## Summary
 summary(cfa1f, standardized=TRUE, fit.measures=TRUE, rsq=TRUE, modindices=TRUE)
-summary(cfa1fi, standardized=TRUE, fit.measures=TRUE, rsq=TRUE, modindices=TRUE)
 summary(cfa2f, standardized=TRUE, fit.measures=TRUE, rsq=TRUE, modindices=TRUE)
 summary(cfa3f, standardized=TRUE, fit.measures=TRUE, rsq=TRUE, modindices=TRUE)
-summary(cfa3fr, standardized=TRUE, fit.measures=TRUE, rsq=TRUE, modindices=TRUE)
 
 
-## Model Loadings
-Est <- parameterEstimates(cfa3fr, ci = FALSE, standardized = TRUE)
-subset(Est, op == "=~")
+# 1-Factor Improved Reduced with the best loadings
+RCQ.1fi.MODEL  <- ' # Latent variables
+                   readiness       =~ rcq_1 + rcq_4 + rcq_8 +  rcq_10'
 
-## Modification indices
-MI <- modificationIndices(cfa3fr)
-subset(MI, mi > 10)
+cfa1fi  <- cfa(RCQ.1fi.MODEL,  data = rcq1factor)
 
-1f.fitmea <- fitMeasures(cfa1f, fit.measures = c("chisq", "df", "cfi", "rmsea", "rmsea.ci.lower", "rmsea.ci.upper"))
+summary(cfa1fi, modindices=TRUE)
 
-fitMeasures(cfa1fi, fit.measures = c("chisq", "df", "cfi", "rmsea", "rmsea.ci.lower", "rmsea.ci.upper"))
 
-2f.fitmea <- fitMeasures(cfa2f, fit.measures = c("chisq", "df", "cfi", "rmsea", "rmsea.ci.lower", "rmsea.ci.upper"))
-3f.fitmea <- fitMeasures(cfa3f, fit.measures = c("chisq", "df", "cfi", "rmsea", "rmsea.ci.lower", "rmsea.ci.upper"))
-3fr.fitmea <- fitMeasures(cfa3fr, fit.measures = c("chisq", "df", "cfi", "rmsea", "rmsea.ci.lower", "rmsea.ci.upper"))
+
+# Fit measures
+rbind(
+round(fitMeasures(cfa1fi, fit.measures = c("chisq", "df", "cfi", "rmsea", "rmsea.ci.lower", "rmsea.ci.upper", "bic", "aic")),3) , 
+round(fitMeasures(cfa2f, fit.measures = c("chisq", "df", "cfi", "rmsea", "rmsea.ci.lower", "rmsea.ci.upper", "bic", "aic")),3) , 
+round(fitMeasures(cfa1f, fit.measures = c("chisq", "df", "cfi", "rmsea", "rmsea.ci.lower", "rmsea.ci.upper", "bic", "aic")),3),
+round(fitMeasures(cfa3f, fit.measures = c("chisq", "df", "cfi", "rmsea", "rmsea.ci.lower", "rmsea.ci.upper", "bic", "aic")),3)
+)
+
+## Anova
+anova(cfa1f, cfa2f, cfa1fi, cfa3f)
 
 # Graphing solution
 library(qgraph)
-qgraph(cfa3f, layout = "tree", titles = FALSE)
+qgraph(cfa1fi, layout = "tree", titles = FALSE)
 
+# Alpha
+alpha(cfa.rcq1f[,c(1,4,8,10)])
 
 # 2-Factor Model 
 RCQ.2fb.MODEL  <- ' # Latent variables
@@ -386,26 +364,15 @@ rcq$profile[rcq$rcqPc <= 9 & rcq$rcqC <= 9 & rcq$rcqA <= 9 ]  <- "H (– – –
 
 ## Checking unidimensionality
 ### 1 Factor
+library(ltm)
+irt.rcq  <- rcq[,22:33]
+irt.rcq  <- irt.rcq[,c(1,4,8,10)]
 
-#### preo
-m1f  <- mirt(preo, 1, rotate="oblimin")
-summary(m1f)
-residuals(m1f)
+rcq2p  <- grm(irt.rcq); rcq1p  <- grm(irt.rcq, constrained = T)
 
-#### Action
-m1f  <- mirt(action, 1, rotate="oblimin")
-summary(m1f)
-plot(m1f)
+anova(rcq1p, rcq2p)
 
-itemplot(m1f, 7, 'trace')
-
-residuals(m1f, type="LDG2")
-coef(m1f)
-
-# factor scores
-scores  <- fscores(m1f, full.scores = TRUE)
-
-summary(scores$)
+summary(rcq2p)
 
 
 ## Pre contemplation
@@ -414,12 +381,12 @@ preo2p  <- grm(preo); preo1p  <- grm(preo, constrained = T) # Comparing models -
 anova(preo1p, preo2p) # 2 parameters model (preo2p) seems to fit data better
 
 ### Plotting Item Characteristic Curves
-plot(preo2p, type= "IIC", col = brewer.pal(4,"Dark2"), legend= TRUE) 
-plot(preo2p, type= "ICC", col = brewer.pal(4,"Dark2"), legend= TRUE)
-plot(preo2p, type= "OCCu", col = brewer.pal(4,"Dark2"), legend= TRUE)
+plot(rcq2p, type= "IIC", col = brewer.pal(4,"Dark2"), legend= TRUE) 
+plot(rcq2p, type= "ICC", col = brewer.pal(4,"Dark2"), legend= TRUE)
+plot(rcq2p, type= "OCCu", col = brewer.pal(4,"Dark2"), legend= TRUE)
 
 ### Coeficients
-coef(preo2p)
+coef(rcq2p)
 
 ## Contemplation
 c2Par  <- grm(shortC); c1Par  <- grm(shortC, constrained = T) # Comparing models - one parameter vs. 2 parameter
