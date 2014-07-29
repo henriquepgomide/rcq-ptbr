@@ -269,7 +269,7 @@ RCQ.1fi.MODEL  <- ' # Latent variables
 
 cfa1fi  <- cfa(RCQ.1fi.MODEL,  data = rcq1factor)
 
-summary(cfa1fi, modindices=TRUE)
+summary(cfa1fi, standardized=TRUE, fit.measures=TRUE, rsq=TRUE, modindices=TRUE)
 
 
 
@@ -301,6 +301,27 @@ Action =~ rcq_6 + rcq_7 + rcq_11
 cfa2fb  <- cfa(RCQ.2fb.MODEL,  data = rcq1factor)
 
 summary(cfa2fb, standardized=TRUE, fit.measures=TRUE, rsq=TRUE, modindices=TRUE)
+
+
+# Final Scale sum
+sumrcq  <- (rcq[,c("rcq_1","rcq_4","rcq_8","rcq_10")])
+
+# Recode 1 to 10
+
+sumrcq$rcq_1 <- Recode(sumrcq$rcq_1, "1='2'  ; 2='1'  ; 3 = '0'; 4 = '-1'; 5 = '-2'")
+sumrcq$rcq_4 <- Recode(sumrcq$rcq_4, "1='-2' ; 2='-1' ; 3 = '0'; 4 = ' 1'; 5 = ' 2'")
+sumrcq$rcq_8 <- Recode(sumrcq$rcq_8, "1='-2' ; 2='-1' ; 3 = '0'; 4 = ' 1'; 5 = ' 2'")
+sumrcq$rcq_10 <- Recode(sumrcq$rcq_10, "1='2'; 2='1'  ; 3 = '0'; 4 = '-1'; 5 = '-2'")
+
+# Sum vari
+sumrcq$sum  <- sumrcq$rcq_1 + sumrcq$rcq_4 + sumrcq$rcq_8 + sumrcq$rcq_10
+
+# summary
+describe(sumrcq$sum)
+
+
+
+#  BIN ----
 
 # Summing factors
 ## Action
