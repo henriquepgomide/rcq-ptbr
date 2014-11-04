@@ -39,28 +39,31 @@ names(audit)[names(audit)=="client_ID"] <- "client_id"
 names(registration_form)[names(registration_form)=="client_ID"] <- "client_id"
 
 ## Merging data frames using "client_id" as key
-rcqMerged  <- merge(audit, registration_form, by.x="client_id", by.y="client_id", all= TRUE) # creating temporary data.frame
+rcqMerged  <- merge(audit, registration_form, by.x="client_id", by.y="client_id", all= TRUE) # create temporary data.frame
 rcqFinal  <- merge(rcqMerged, rcq_motivation, by.x="client_id", by.y="client_ID", all = TRUE)
 rm(rcqMerged) # removing the temporary dataframe
 
-## Select just valid cases for RCQ
-rcq  <- subset(rcqFinal, rcqFinal$rcq_1 != "NA" & rcqFinal$rcq_2 != "NA" & rcqFinal$rcq_1 != "NA" & rcqFinal$Research == "Sim")
-rcq$sex <-  as.numeric(rcq$sex)
-rcq$Timestamp.x <- as.Date(rcq$Timestamp.x, "%d.%m.%Y")
+## Convert  timestamp to R date format
+rcqFinal$Timestamp.x <- as.Date(rcqFinal$Timestamp.x, "%d.%m.%Y")
 
+## Subset data from the period 2013-10-21 until  2014-03-11
+rcq  <- subset(rcqFinal, rcqFinal$Timestamp.x >= "2013-10-21" & rcqFinal$Timestamp.x <= "2014-03-11")
+
+## Select just valid cases for RCQ
+rcq  <- subset(rcq, rcq$rcq_1 != "NA" & rcq$rcq_2 != "NA" & rcq$rcq_1 != "NA" & rcq$Research == "Sim")
 
 ## Final dataframe
 rcq  <- rcq[, c("client_id", "Timestamp.x", "audit_1", "audit_2", "audit_3", "audit_4", "audit_5", "audit_6", "audit_7", "audit_8", "audit_9", "audit_10", "Result", "sex", "age", "education", "Province", "País", "Work.situation", "rcq_1", "rcq_2", "rcq_3","rcq_4","rcq_5","rcq_6","rcq_7","rcq_8","rcq_9","rcq_10","rcq_11","rcq_12","rcq_a","rcq_b","rcq_c","rcq_outcome")]
 
 
 ## Save final data.frame as csv file
+setwd("~/rcq-ptbr/")
 write.csv(rcq, "rcq.csv")
 
 #------ DATA ANALYSIS -------
 
 ## Open dataframe 
 rcq  <- read.csv("rcq.csv")
-describe(rcq)
 
 ##---- Transform and compute vars ---------
 
@@ -108,7 +111,6 @@ write.csv(rcq, "rcq_df.csv" )
 ## --- OPEN DATA ----
 
 rcq  <- read.csv("rcq_df.csv")
-
 
 ##---- Descriptives ---------
 
