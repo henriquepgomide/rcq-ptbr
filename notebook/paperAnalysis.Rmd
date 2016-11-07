@@ -1,0 +1,133 @@
+---
+title: "Psychometric Properties of the Brazilian Portuguese Version of the Readiness to Change Questionnaire – RCQ-BR"
+output: html_notebook
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Ctrl+Shift+Enter*. 
+
+# Preamble
+
+1. Set seed
+2. Load packages
+3. Load data
+
+```{r echo = FALSE}
+set.seed(12345)
+
+library(psych)       # Exploratory Factor Analysis and Reliability
+library(lavaan)      # Confirmatory Factor Analysis
+library(car)         # Recode function
+library(lattice)     # Trellis graphics
+library(tigerstats)  # Crosstables with percentages
+
+# Open Data
+rcq  <- read.csv("~/rcq-ptbr/rcq_df.csv")
+
+# Remove low risk users from data
+rcqPaper <- subset(rcq, rcq$auditRec != "Low Risk")
+```
+
+# Paper
+
+## Subjects
+```{r}
+cbind(round(prop.table(sort(table(rcq$auditRec), decreasig=TRUE)),3))*100
+```
+
+### Sample characteristics
+Age and Sex
+```{r}
+describe(rcqPaper$age)
+```
+
+```{r}
+round(prop.table(table(rcqPaper$sex)),3)*100
+```
+
+Instruments
+Audit alpha
+```{r}
+# Check alpha of AUDIT
+psych::alpha(rcqPaper[,5:14], check.keys = TRUE)
+```
+
+# Table 1 - Sample characteristics
+```{r}
+rcq_rand <- rcqPaper[order(runif(nrow(rcqPaper))), ]
+# Split data frames for analysis
+rcqEfa  <- rcq_rand[1:as.integer(nrow(rcqPaper)/2), ]                  # Exploratory factor analysis data
+rcqCfa  <- rcq_rand[(as.integer(nrow(rcqPaper)/2)+1):nrow(rcqPaper), ] # Confirmatory factor analysis data
+
+rcqPaper$df.id <- "total"
+rcqEfa$df.id <- "efa"
+rcqCfa$df.id <- "cfa"
+rcq_comparison <- rbind(rcqPaper, rcqEfa,rcqCfa)
+```
+
+Age
+```{r}
+by(rcq_comparison$age, rcq_comparison$df.id, describe)
+drop1(aov(age ~ df.id, data = rcq_comparison),~., test="F")
+```
+
+Audit Score
+```{r}
+by(rcq_comparison$Result, rcq_comparison$df.id, describe)
+drop1(aov(Result ~ df.id, data = rcq_comparison),~., test="F")
+```
+
+Sex
+```{r}
+summary(xtabs(~ sex + df.id, data = rcq_comparison))
+colPerc(xtabs(~ sex + df.id, data = rcq_comparison))
+```
+
+Education
+```{r}
+rcq_comparison$education <- Recode(rcqPaper$education, "'Graduate' = 'College'; 'College Incomp.' = 'High School'; 'High School Comp' = 'High School'; 'High School Incomp' = 'Elementary'")
+summary(xtabs(~ education + df.id, data = rcq_comparison))
+colPerc(xtabs(~ education + df.id, data = rcq_comparison))
+```
+
+Employment
+```{r}
+colPerc(xtabs(~ Work.situation + df.id, data = rcq_comparison))
+summary(xtabs(~ Work.situation +df.id, data = rcq_comparison))
+```
+
+Region of Brazil
+```{r}
+colPerc(xtabs(~ region + df.id, data = rcq_comparison))
+summary(xtabs(~ region +df.id, data = rcq_comparison))
+```
+
+Audit classification
+```{r}
+colPerc(xtabs(~ auditRec + df.id, data = rcq_comparison))
+summary(xtabs(~ auditRec + df.id, data = rcq_comparison, drop.unused.levels = TRUE))
+```
+
+# EFA
+
+```{r}
+# Exploratory Factor Analysis ----
+rcqEfa_complete  <- rcqEfa[,22:33] # Select just the RCQ items
+```
+
+      
+# Descriptive statistics for questionnaire
+describe(rcqEfa_complete)
+```{r}
+KMO(rcqEfa_complete)
+
+# Barlett test of homogeneity
+bartlett.test(rcqEfa_complete)
+
+# Parallel Analysis with polychoric correlations and minimal residuals method
+fa.parallel(rcqEfa_complete, fm="minres", fa="fa", cor = "poly")
+
+# Very simple structure
+VSS(rcqEfa_complete)
+```
